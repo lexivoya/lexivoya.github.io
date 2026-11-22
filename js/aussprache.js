@@ -17,8 +17,7 @@
     if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
     return /Android/.test(ua) ? 'android' : /Macintosh/.test(ua) ? 'mac' : 'andere'; })();
   const EINSTELLUNG = {
-    ios: { mikrofon: 'unter Einstellungen → Safari → Mikrofon (oder über „aA“ in der Adressleiste → Website-Einstellungen)',
-      erkennung: 'Einstellungen → Siri bzw. Einstellungen → Allgemein → Tastatur → Diktierfunktion' },
+    ios: { mikrofon: 'unter Einstellungen → Safari → Mikrofon (oder über „aA“ in der Adressleiste → Website-Einstellungen)', erkennung: '' },   // Erkennung auf iOS ausgeblendet
     android: { mikrofon: 'beim Schloss-Symbol neben der Adresse → Berechtigungen',
       erkennung: 'in den Android-Einstellungen die Spracheingabe (Sprachdienste von Google) aktivieren' },
     mac: { mikrofon: 'beim Schloss-Symbol neben der Adresse bzw. in Safari unter Einstellungen → Websites → Mikrofon',
@@ -304,7 +303,10 @@
   window.addEventListener('resize', () => { if (!$('#as-vergleich').hidden && aufnahme) vergleichZeigen(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { stoppeAufnahme(true); if (srAktiv) srAktiv.abbrechen(); } });
   window.addEventListener('pagehide', () => { stoppeAufnahme(true); aufnahme = null; });
-  if (SR) {
+  // iOS (iPhone/iPad, alle Browser dort mit Safari-Technik): Verstanden-Prüfung ausgeblendet. Im iPhone-Test 2026-11-22 scheiterte
+  // jeder Versuch trotz Siri/Diktat, ein Knopf, der immer scheitert, frustriert nur. Stattdessen ein Einzeiler.
+  if (PLATTFORM === 'ios') $('#as-sr-ios').hidden = false;
+  else if (SR) {
     $('#as-sr').hidden = false;
     $('#as-sr-erlauben').addEventListener('click', () => { srErlaubt = true; $('#as-sr-zustimmung').hidden = true; $('#as-sr-aktiv').hidden = false; });
     $('#as-sr-pruefen').addEventListener('click', () => srErlaubt && srPruefen());
