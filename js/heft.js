@@ -62,7 +62,14 @@
     }).join('');
   }
 
-  function alles() { heft(); stempel(); ziel(); kompetenzen(); }
+  function aussprache() {                               // „Noch mal üben“ aus der Aussprache-Übung (nur die Einschätzung, kein Audio)
+    const liste = L.ausspracheUeben().filter(id => D.woerter[id]), el = $('#aussprache-merk');
+    el.innerHTML = liste.length ? `<p><b>Aussprache üben:</b> ${liste.map(id => {
+      const f = D.folgen.find(x => x.woerter.includes(id));
+      return `<a href="${f.url}?wort=${encodeURIComponent(id)}#aussprache" lang="en">${esc(D.woerter[id].en)}</a>`; }).join(' · ')}</p>
+      <p class="hinweis">Diese Wörter hast du zum Sprechen vorgemerkt. Sie bleiben hier, bis du sie mit „Klang gut“ abhakst.</p>` : '';
+  }
+  function alles() { heft(); stempel(); ziel(); kompetenzen(); aussprache(); }
   $('#ziel .pause').addEventListener('click', () => L.pauseUmschalten());
   $('#export').addEventListener('click', () => L.exportieren());
   $('#import').addEventListener('change', e => {

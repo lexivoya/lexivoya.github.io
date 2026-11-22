@@ -142,3 +142,31 @@ details.passiv ul{columns:2; gap:1.5rem; padding-left:1.1rem; font-size:.95rem;}
 .dl-liste{display:grid; gap:1rem; margin-top:1.4rem;}
 .dl-eintrag .hinweis{margin-top:.4rem; max-width:36rem; line-height:1.5;}
 .dl-eintrag .hinweis a{color:var(--ink-soft);}
+
+/* Aussprache üben */
+.aussprache{max-width:46rem;}
+.as-kopf{display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;}
+.as-kopf select{font:inherit; font-weight:600; padding:.4rem .6rem; border:2px solid color-mix(in srgb, var(--line) 50%, transparent); border-radius:8px; background:var(--paper); color:var(--ink); min-width:0; flex:1 1 12rem;}
+.as-modus{display:inline-flex; border:2px solid color-mix(in srgb, var(--line) 50%, transparent); border-radius:999px; overflow:hidden; margin-left:auto;}
+.as-modus button{border:0; background:transparent; padding:.35rem .8rem; font-weight:600; font-size:.9rem; color:var(--ink-soft);}
+.as-modus button[aria-pressed="true"]{background:var(--ink); color:var(--paper);}
+@media (max-width:560px){ .as-modus{margin-left:0;} }
+.as-ziel{font-family:var(--hand); font-size:clamp(1.9rem,6vw,2.6rem); font-weight:700; line-height:1.15; margin-top:1rem;}
+.as-schritte{list-style:none; padding:0; margin:1rem 0 .4rem; display:flex; gap:.7rem; flex-wrap:wrap; align-items:center;}
+.as-schritte li{display:flex; gap:.6rem; align-items:center;}
+.btn.aufnahme-laeuft{background:#b4543a; border-color:#b4543a; color:#fff;}
+.as-pegel{width:5.5rem; height:.6rem; border:1.5px solid var(--line); border-radius:999px; overflow:hidden; display:inline-block;}
+.as-pegel i{display:block; height:100%; width:0; background:var(--accent); transition:width .08s;}
+.as-wellen{margin:.9rem 0 .5rem; display:grid; gap:.25rem;}
+.as-wellen figcaption{font-size:.82rem; font-weight:700; letter-spacing:.03em; color:var(--ink-soft); margin-top:.35rem;}
+.as-wellen canvas{width:100%; height:64px; display:block; background:var(--paper); border:1.5px solid color-mix(in srgb, var(--line) 30%, transparent); border-radius:8px;}
+.as-l::before{content:""; display:inline-block; width:.7rem; height:.7rem; border-radius:2px; margin-right:.4rem; vertical-align:-.05rem;}
+.as-l-vorbild::before{background:var(--ink);} .as-l-du::before{background:var(--violet);}
+.hinweis-box{margin-top:.8rem; background:var(--paper); border:1.5px dashed color-mix(in srgb, var(--line) 45%, transparent); border-radius:8px; padding:.6rem .8rem; font-size:.95rem;}
+.as-sr{margin-top:1.4rem; padding-top:1rem; border-top:1.5px dashed color-mix(in srgb, var(--line) 30%, transparent);}
+.as-sr h3{font-size:1.05rem; margin-bottom:.4rem;}
+.sr-ergebnis{margin-top:.8rem; font-weight:700; font-size:1.1rem;}
+.sr-ergebnis.ok span[aria-hidden]{color:var(--ok);} .sr-ergebnis.nein span[aria-hidden]{color:#b4543a;}
+.as-merk{margin-top:1rem;}
+section[id]{scroll-margin-top:5.5rem;}
+@media (max-width:640px){ section[id]{scroll-margin-top:7rem;} }

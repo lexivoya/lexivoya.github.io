@@ -17,7 +17,7 @@
     const j = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
     return `${t.getUTCFullYear()}-W${pad(Math.ceil(((t - j) / 864e5 + 1) / 7))}`;
   }
-  const leer = () => ({ version: 1, woerter: {}, folgen: {}, ziel: { proWoche: null, pausen: [], einheiten: {} }, quizFehler: [] });
+  const leer = () => ({ version: 1, woerter: {}, folgen: {}, ziel: { proWoche: null, pausen: [], einheiten: {} }, quizFehler: [], aussprache: {} });
   let speicherOk = true;
   function laden() {
     try { const s = localStorage.getItem(KEY); return s ? Object.assign(leer(), JSON.parse(s)) : leer(); }
@@ -58,6 +58,14 @@
       L.stempelPruefen(folgeId); sichern();
     },
     quizFehler(folgeId) { return S.quizFehler.filter(k => k.startsWith(folgeId + ':')).map(k => k.split(':')[1]); },
+    // Aussprache: gespeichert wird nur die eigene Einschätzung mit Datum, nie eine Aufnahme.
+    aussprache(id) { return S.aussprache[id] || null; },
+    ausspracheMerken(id, urteil) {
+      S.aussprache[id] = { urteil, datum: heute() };
+      if (urteil === 'ueben' && S.woerter[id] && S.woerter[id].box > 0) S.woerter[id].faellig = heute();   // heute im Heft zur Wiederholung
+      sichern();
+    },
+    ausspracheUeben() { return Object.keys(S.aussprache).filter(id => S.aussprache[id].urteil === 'ueben'); },
     einheit() { const w = woche(); S.ziel.einheiten[w] = (S.ziel.einheiten[w] || 0) + 1; sichern(); },
     ziel() { const w = woche(); return { proWoche: S.ziel.proWoche, diese: S.ziel.einheiten[w] || 0, pause: S.ziel.pausen.includes(w) }; },
     zielSetzen(n) { S.ziel.proWoche = n; sichern(); },
