@@ -13,6 +13,18 @@
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const MAX_S = { wort: 6, satz: 10 };
   let i = 0, modus = 'wort', ctx = null, vorbild = null, aufnahme = null, quelle = null, laeuft = null, bewertet = new Set(), einheitGezaehlt = false;
+  const PLATTFORM = (() => { const ua = navigator.userAgent || '';
+    if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
+    return /Android/.test(ua) ? 'android' : /Macintosh/.test(ua) ? 'mac' : 'andere'; })();
+  const EINSTELLUNG = {
+    ios: { mikrofon: 'unter Einstellungen → Safari → Mikrofon (oder über „aA“ in der Adressleiste → Website-Einstellungen)',
+      erkennung: 'Einstellungen → Siri bzw. Einstellungen → Allgemein → Tastatur → Diktierfunktion' },
+    android: { mikrofon: 'beim Schloss-Symbol neben der Adresse → Berechtigungen',
+      erkennung: 'in den Android-Einstellungen die Spracheingabe (Sprachdienste von Google) aktivieren' },
+    mac: { mikrofon: 'beim Schloss-Symbol neben der Adresse bzw. in Safari unter Einstellungen → Websites → Mikrofon',
+      erkennung: 'Systemeinstellungen → Tastatur → Diktierfunktion' },
+    andere: { mikrofon: 'beim Schloss-Symbol neben der Adresse',
+      erkennung: 'in den Geräte- bzw. Browser-Einstellungen die Spracherkennung oder Diktierfunktion aktivieren' } }[PLATTFORM];
   const vorbilder = new Map(), melodien = new WeakMap(), M = window.LexivoyaMelodie, HT = 9;   // ±9 Halbtöne Bildhöhe
   const FRAGE = { steigend: 'Achte auf das Ende — geht deine Stimme nach oben wie beim Vorbild?',
     fallend: 'Achte auf das Ende — geht deine Stimme nach unten wie beim Vorbild? Bei Fragen mit Fragewort (what, how …) ist das im Englischen üblich.' };
@@ -183,7 +195,7 @@
   function mikrofonFehler(e) {
     const n = e && e.name;
     if (n === 'NotAllowedError' || n === 'SecurityError' || n === 'PermissionDeniedError')
-      return 'Kein Mikrofon-Zugriff — das ist in Ordnung. Wenn du aufnehmen möchtest, erlaube das Mikrofon für diese Seite in den Browser-Einstellungen (beim Schloss-Symbol neben der Adresse bzw. unter Einstellungen → Safari → Mikrofon). Ohne Aufnahme kannst du trotzdem das Vorbild hören und laut mitsprechen.';
+      return `Kein Mikrofon-Zugriff — das ist in Ordnung. Wenn du aufnehmen möchtest, erlaube das Mikrofon für diese Seite ${EINSTELLUNG.mikrofon}. Ohne Aufnahme kannst du trotzdem das Vorbild hören und laut mitsprechen.`;
     if (n === 'NotFoundError' || n === 'DevicesNotFoundError') return 'Es wurde kein Mikrofon gefunden. Mit einem Headset oder am Handy klappt es.';
     if (n === 'NotReadableError' || n === 'TrackStartError') return 'Das Mikrofon wird gerade von einer anderen App benutzt. Schließ sie und probier es noch einmal.';
     return 'Die Aufnahme ließ sich nicht starten. Hör dir das Vorbild an und sprich laut mit — das hilft auch.';
@@ -227,36 +239,50 @@
     let k = 0; for (const t of ist) if (k < soll.length && aehnlich(t, soll[k])) k++;
     return soll.length > 0 && k === soll.length;
   }
-  window.LexivoyaAussprache = { passt, zielWoerter };  // für den Funktionstest
-  let srErlaubt = false, srAktiv = null;
+  window.LexivoyaAussprache = { passt, zielWoerter, plattform: PLATTFORM };  // für den Funktionstest
+  let srErlaubt = false, srAktiv = null, srVerweigert = 0;
+  const hinweis = t => `<p class="hinweis-box">${esc(t)}</p>`, NOCHMAL = 'Das hat nicht geklappt — versuch es noch einmal.';
   function srPruefen() {
-    if (srAktiv) { srAktiv.abort(); return; }
+    if (srAktiv) { srAktiv.abbrechen(); return; }
     stoppeWiedergabe(); stoppeAufnahme();
+    if (ctx && ctx.state === 'running' && ctx.suspend) ctx.suspend().catch(() => {});   // iOS: eigene Audio-Sitzung freigeben (Wiedergabe/Aufnahme wecken sie wieder)
     const z = ziel(), erg = $('#as-sr-ergebnis'), knopf = $('#as-sr-pruefen');
-    let rec; try { rec = new SR(); } catch (e) { erg.innerHTML = '<p class="hinweis-box">Die Spracherkennung ist in diesem Browser gerade nicht verfügbar.</p>'; return; }
+    let rec; try { rec = new SR(); } catch (e) { erg.innerHTML = hinweis('Die Spracherkennung ist in diesem Browser gerade nicht verfügbar.'); return; }
     rec.lang = 'en-GB'; rec.interimResults = false; rec.maxAlternatives = 5; rec.continuous = false;
-    let ergebnis = false; srAktiv = rec;
-    knopf.textContent = '■ Hört zu … (antippen zum Abbrechen)'; erg.innerHTML = '<p class="muted">Sprich jetzt: <b lang="en">' + esc(z.text) + '</b></p>';
+    let fertig = false, waechter = null;
+    function abschliessen(html) {                      // genau EIN Endzustand je Versuch: Knopf zurück, dann Ergebnis oder Hinweis; spätere Ereignisse zählen nicht
+      if (fertig) return; fertig = true; clearTimeout(waechter);
+      rec.onresult = rec.onerror = rec.onend = null;
+      if (srAktiv === versuch) srAktiv = null;
+      knopf.textContent = '🎙 Prüfen, ob man dich versteht'; knopf.classList.remove('aufnahme-laeuft');
+      erg.innerHTML = html;
+    }
+    const versuch = { abbrechen() { abschliessen(hinweis('Abgebrochen.')); try { rec.abort(); } catch (e) {} } };
     rec.onresult = e => {
-      ergebnis = true;
       const alt = Array.from(e.results[0]).map(a => a.transcript.trim()).filter(Boolean);
       const ok = alt.some(a => passt(a, z.text)), gezeigt = ok ? alt.find(a => passt(a, z.text)) : alt[0] || '';
-      const namen = zielWoerter(z.text).some(x => x.name);
-      erg.innerHTML = `<p class="sr-ergebnis ${ok ? 'ok' : 'nein'}"><span aria-hidden="true">${ok ? '✓' : '✗'}</span> Verstanden: „<span lang="en">${esc(gezeigt)}</span>“</p>
+      const namen = zielWoerter(z.text).some(x => x.name); srVerweigert = 0;
+      abschliessen(`<p class="sr-ergebnis ${ok ? 'ok' : 'nein'}"><span aria-hidden="true">${ok ? '✓' : '✗'}</span> Verstanden: „<span lang="en">${esc(gezeigt)}</span>“</p>
         <p class="muted">${ok ? 'Das passt zum Ziel. Man hat dich verstanden.' : `Erwartet war „<span lang="en">${esc(z.text)}</span>“. Sprich langsam und deutlich und probier es noch einmal.`}
-        ${namen ? ' Namen zählen beim Vergleich nicht mit.' : ''}</p>`;
+        ${namen ? ' Namen zählen beim Vergleich nicht mit.' : ''}</p>`);
+      try { rec.stop(); } catch (x) {}
     };
     rec.onerror = e => {
-      ergebnis = true;
-      const t = { 'not-allowed': 'Kein Mikrofon-Zugriff für die Spracherkennung. Du kannst ihn in den Browser-Einstellungen erlauben.',
-        'service-not-allowed': 'Die Spracherkennung ist auf diesem Gerät ausgeschaltet (auf dem iPhone: Einstellungen → Siri bzw. Diktierfunktion).',
+      let t;
+      if (e.error === 'service-not-allowed') {        // iOS meldet das auch bei eingeschaltetem Siri/Diktat (z. B. bei belegter Audio-Sitzung): erst beim Wiederholen Einstellungs-Hinweis
+        srVerweigert++;
+        t = srVerweigert < 2 ? NOCHMAL : `Das hat wieder nicht geklappt: Der Browser sagt, die Spracherkennung sei nicht erlaubt. Falls sie ausgeschaltet ist: ${EINSTELLUNG.erkennung}. Sonst hilft oft, die Seite neu zu laden.`;
+      } else t = { 'not-allowed': `Kein Mikrofon-Zugriff für die Spracherkennung. Erlauben kannst du ihn ${EINSTELLUNG.mikrofon}.`,
         'no-speech': 'Es kam nichts an. Tippe noch einmal und sprich gleich los.', 'audio-capture': 'Es wurde kein Mikrofon gefunden.',
-        'network': 'Die Spracherkennung deines Browsers braucht eine Internetverbindung und hat gerade keine.', 'aborted': 'Abgebrochen.' }[e.error]
-        || 'Die Spracherkennung hat gerade nicht geklappt. Probier es noch einmal.';
-      erg.innerHTML = `<p class="hinweis-box">${esc(t)}</p>`;
+        'network': 'Die Spracherkennung deines Browsers braucht eine Internetverbindung und hat gerade keine.', 'aborted': 'Abgebrochen.' }[e.error] || NOCHMAL;
+      abschliessen(hinweis(t));
     };
-    rec.onend = () => { srAktiv = null; knopf.textContent = '🎙 Prüfen, ob man dich versteht'; if (!ergebnis) erg.innerHTML = '<p class="hinweis-box">Nichts erkannt. Tippe noch einmal und sprich gleich los.</p>'; };
-    try { rec.start(); } catch (e) { srAktiv = null; erg.innerHTML = '<p class="hinweis-box">Die Spracherkennung ließ sich nicht starten.</p>'; }
+    rec.onend = () => abschliessen(hinweis('Nichts erkannt. Tippe noch einmal und sprich gleich los.'));
+    waechter = setTimeout(() => { abschliessen(hinweis(NOCHMAL)); try { rec.abort(); } catch (e) {} }, 15000);   // falls der Browser nie antwortet
+    srAktiv = versuch;
+    knopf.textContent = '■ Hört zu … (antippen zum Abbrechen)'; knopf.classList.add('aufnahme-laeuft');
+    erg.innerHTML = '<p class="muted">Sprich jetzt: <b lang="en">' + esc(z.text) + '</b></p>';
+    try { rec.start(); } catch (e) { abschliessen(hinweis(NOCHMAL)); }
   }
 
   // ---------------------------------------------------------------- Verdrahtung
@@ -276,7 +302,7 @@
   $('#as-gut').addEventListener('click', () => urteil('gut'));
   $('#as-ueben').addEventListener('click', () => urteil('ueben'));
   window.addEventListener('resize', () => { if (!$('#as-vergleich').hidden && aufnahme) vergleichZeigen(); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) stoppeAufnahme(true); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { stoppeAufnahme(true); if (srAktiv) srAktiv.abbrechen(); } });
   window.addEventListener('pagehide', () => { stoppeAufnahme(true); aufnahme = null; });
   if (SR) {
     $('#as-sr').hidden = false;
