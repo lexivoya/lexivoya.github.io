@@ -159,9 +159,12 @@ details.passiv ul{columns:2; gap:1.5rem; padding-left:1.1rem; font-size:.95rem;}
 .as-pegel i{display:block; height:100%; width:0; background:var(--accent); transition:width .08s;}
 .as-wellen{margin:.9rem 0 .5rem; display:grid; gap:.25rem;}
 .as-wellen figcaption{font-size:.82rem; font-weight:700; letter-spacing:.03em; color:var(--ink-soft); margin-top:.35rem;}
-.as-wellen canvas{width:100%; height:64px; display:block; background:var(--paper); border:1.5px solid color-mix(in srgb, var(--line) 30%, transparent); border-radius:8px;}
+.as-wellen canvas{width:100%; height:80px; display:block; background:var(--paper); border:1.5px solid color-mix(in srgb, var(--line) 30%, transparent); border-radius:8px;}
 .as-l::before{content:""; display:inline-block; width:.7rem; height:.7rem; border-radius:2px; margin-right:.4rem; vertical-align:-.05rem;}
 .as-l-vorbild::before{background:var(--ink);} .as-l-du::before{background:var(--violet);}
+.as-l-melodie::before{height:3px; width:1.1rem; border-radius:2px; background:var(--accent); vertical-align:.2rem;}
+.as-legende{font-weight:500!important; letter-spacing:0!important;}
+.as-frage{margin:.6rem 0 .2rem;}
 .hinweis-box{margin-top:.8rem; background:var(--paper); border:1.5px dashed color-mix(in srgb, var(--line) 45%, transparent); border-radius:8px; padding:.6rem .8rem; font-size:.95rem;}
 .as-sr{margin-top:1.4rem; padding-top:1rem; border-top:1.5px dashed color-mix(in srgb, var(--line) 30%, transparent);}
 .as-sr h3{font-size:1.05rem; margin-bottom:.4rem;}

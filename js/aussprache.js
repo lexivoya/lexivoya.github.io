@@ -2,6 +2,8 @@
    Stufe 1 Selbstvergleich: Vorbild hören → aufnehmen → Vorbild / Deine Aufnahme im Wechsel → beide Wellenformen als Bild → selbst einschätzen.
    Die Aufnahme liegt nur im Arbeitsspeicher dieses Tabs (Float32-Daten, kein Blob, keine Datei), wird nie hochgeladen und nie gespeichert;
    beim Wechsel des Worts, bei neuer Aufnahme oder beim Verlassen der Seite ist sie weg. Das Mikrofon wird nach jeder Aufnahme wieder freigegeben.
+   Über jeder Wellenform liegt die Sprachmelodie (melodie.js, im Browser berechnet, Halbtöne relativ zur eigenen mittleren Tonhöhe),
+   damit tiefe und hohe Stimmen vergleichbar sind. Kein Score aus den Kurven: Sie sind ein Bild zum Selbstvergleich.
    Stufe 2 (freiwillig): Spracherkennung des Browsers (Web Speech API), nur wenn vorhanden und erst nach ausdrücklichem Klick. */
 (function () {
   'use strict';
@@ -11,7 +13,9 @@
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const MAX_S = { wort: 6, satz: 10 };
   let i = 0, modus = 'wort', ctx = null, vorbild = null, aufnahme = null, quelle = null, laeuft = null, bewertet = new Set(), einheitGezaehlt = false;
-  const vorbilder = new Map();
+  const vorbilder = new Map(), melodien = new WeakMap(), M = window.LexivoyaMelodie, HT = 9;   // ±9 Halbtöne Bildhöhe
+  const FRAGE = { steigend: 'Achte auf das Ende — geht deine Stimme nach oben wie beim Vorbild?',
+    fallend: 'Achte auf das Ende — geht deine Stimme nach unten wie beim Vorbild? Bei Fragen mit Fragewort (what, how …) ist das im Englischen üblich.' };
 
   // ---------------------------------------------------------------- Audio-Grundlagen
   const AC = window.AudioContext || window.webkitAudioContext;   // ohne Web Audio: Vorbild über <audio>, keine Aufnahme
@@ -56,6 +60,8 @@
     $('#as-ziel').textContent = z.text; $('#as-de').textContent = '= ' + z.de;
     $('#as-vergleich').hidden = true; $('#as-meldung').innerHTML = ''; $('#as-urteil-meldung').textContent = '';
     $('#as-sr-ergebnis').innerHTML = '';
+    const richtung = (D.woerter[ids[i]].melodie || {})[modus], fh = $('#as-melodie-hinweis');   // Kennzeichnung aus den Lektionsdaten
+    fh.hidden = !FRAGE[richtung]; fh.textContent = FRAGE[richtung] || '';
     const merk = L.aussprache(ids[i]);
     $('#as-stand').textContent = merk ? (merk.urteil === 'gut' ? `Zuletzt: „Klang gut“ (${datum(merk.datum)})` : `Zum Üben vorgemerkt (${datum(merk.datum)})`) : '';
     vorbild = null; if (ctx) vorbildLaden(z.src).then(b => { if (ziel().src === z.src) vorbild = b; }).catch(() => {});   // Audio-Kontext erst nach der ersten Berührung
@@ -67,22 +73,47 @@
     canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
     const g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
     g.strokeStyle = farbe('--line'); g.globalAlpha = .25; g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke(); g.globalAlpha = 1;
-    if (!buf) return;
+    canvas.dataset.melodiePunkte = '0';
+    if (!buf) return 0;
     const d = buf.getChannelData(0); let spitze = 0; for (const x of d) spitze = Math.max(spitze, Math.abs(x));
     const breite = Math.max(1, Math.round(w * buf.duration / dauer)), proSpalte = d.length / breite;
-    g.fillStyle = farbe(name);
+    g.fillStyle = farbe(name); g.globalAlpha = M ? .5 : 1;   // Welle etwas zurücknehmen, damit die Melodielinie lesbar bleibt
     for (let x = 0; x < breite; x++) {                 // je Spalte Minimum/Maximum, auf die eigene Spitze bezogen (Form, nicht Lautstärke)
       let lo = 0, hi = 0; const a = Math.floor(x * proSpalte), b = Math.min(d.length, Math.floor((x + 1) * proSpalte));
       for (let k = a; k < b; k++) { if (d[k] < lo) lo = d[k]; if (d[k] > hi) hi = d[k]; }
       const y0 = h / 2 - (hi / (spitze || 1)) * (h / 2 - 2), y1 = h / 2 - (lo / (spitze || 1)) * (h / 2 - 2);
       g.fillRect(x, y0, 1, Math.max(1, y1 - y0));
     }
+    g.globalAlpha = 1;
+    return melodieZeichnen(g, buf, dauer, w, h, canvas);
+  }
+  function melodie(buf) {
+    if (!M) return null;
+    if (!melodien.has(buf)) melodien.set(buf, M.kurve(buf.getChannelData(0), buf.sampleRate));
+    return melodien.get(buf);
+  }
+  function melodieZeichnen(g, buf, dauer, w, h, canvas) {   // dünne Linie, stimmlose Stellen als Lücke (Pfad unterbrochen)
+    const k = melodie(buf); canvas.dataset.melodiePunkte = '0';
+    if (!k || k.mitte == null) return 0;
+    const pfad = new Path2D(); let n = 0, offen = false;
+    for (let j = 0; j < k.st.length; j++) {
+      const s = k.st[j]; if (s == null) { offen = false; continue; }
+      const x = k.t[j] / dauer * w, y = h / 2 - Math.max(-HT, Math.min(HT, s)) / HT * (h / 2 - 5);
+      if (offen) pfad.lineTo(x, y); else { pfad.moveTo(x, y); offen = true; }
+      n++;
+    }
+    g.lineJoin = g.lineCap = 'round';
+    g.strokeStyle = farbe('--paper'); g.lineWidth = 4.5; g.stroke(pfad);   // heller bzw. dunkler Saum gegen die Welle
+    g.strokeStyle = farbe('--accent'); g.lineWidth = 2; g.stroke(pfad);
+    canvas.dataset.melodiePunkte = String(n);
+    return n;
   }
   function vergleichZeigen() {
     $('#as-vergleich').hidden = false;
     const dauer = Math.max(vorbild ? vorbild.duration : 0, aufnahme ? aufnahme.duration : 0, .3);
     zeichnen($('#as-welle-vorbild'), vorbild, dauer, '--ink');
-    zeichnen($('#as-welle-du'), aufnahme, dauer, '--violet');
+    const punkte = zeichnen($('#as-welle-du'), aufnahme, dauer, '--violet');
+    $('#as-melodie-meldung').textContent = M && aufnahme && !punkte ? 'In deiner Aufnahme war keine Sprachmelodie zu erkennen. Sprich mit Stimme und etwas lauter, dann erscheint die Linie.' : '';
     $('#as-dauer').textContent = `Vorbild ${vorbild ? vorbild.duration.toFixed(1) : '–'} s · deine Aufnahme ${aufnahme.duration.toFixed(1)} s`;
   }
 
