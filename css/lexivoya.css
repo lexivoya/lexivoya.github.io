@@ -227,3 +227,20 @@ h3 .h-kontext{font-size:.72em;}
 footer{padding-bottom:max(2.2rem, calc(1rem + env(safe-area-inset-bottom, 0px)));}
 :root[data-app="standalone"] body{-webkit-tap-highlight-color:transparent;}
 #player{scroll-margin-top:6rem;}
+
+/* Fuß: Impressum · Datenschutz · Kontakt + Social-Icons (2026-11-24) */
+.foot .foot-links a + a::before{content:"·"; margin-right:.55rem; margin-left:-.55rem; color:var(--ink-soft); text-decoration:none; display:inline-block;}
+.sozial{display:flex; gap:.9rem; align-items:center; width:100%; justify-content:flex-end;}
+.sozial a{color:var(--ink-soft); display:inline-grid; place-items:center; width:2.4rem; height:2.4rem; border-radius:999px; border:1.5px solid color-mix(in srgb, var(--line) 25%, transparent);}
+.sozial a:hover{color:var(--ink); border-color:var(--line);}
+@media (max-width:640px){ .foot .foot-links{margin-left:0; flex-wrap:wrap; row-gap:.5rem;} .sozial{justify-content:flex-start;} }
+.feedback-kurz{padding-block:1.4rem;}
+.feedback-kurz .hand{font-size:1.6rem; font-weight:700; color:var(--violet); margin:0;}
+.feedback-kurz p{margin:.1rem 0 0;}
+
+/* Lektion: Abonnieren-Knopf neben dem Video (2026-11-24), Serien-Look: Tusche-Rahmen, Akzent beim Darüberfahren */
+.abo{display:flex; align-items:center; gap:.4rem 1rem; flex-wrap:wrap; margin-top:.9rem;}
+.btn-abo{display:inline-flex; align-items:center; gap:.5rem; padding:.55rem 1.05rem; background:var(--card); color:var(--ink);}
+.btn-abo svg{color:#b4543a; flex:none;}
+.btn-abo:hover{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, var(--card));}
+.abo .hinweis{margin:0;}

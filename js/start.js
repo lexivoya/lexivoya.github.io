@@ -1,4 +1,4 @@
-/* Lexivoya · Startseite: Fortschritt aus dem Lernstand dieses Browsers, E-Mail kopieren.
+/* Lexivoya · Startseite: Fortschritt aus dem Lernstand dieses Browsers.
    Der Abschnitt „Dein Fortschritt“ gehört zur aktuellen Serie der Startseite (CHINWAG); alle Kurse zeigt /kurse/. */
 (function () {
   'use strict';
@@ -17,11 +17,4 @@
     $('#dash-note').textContent = L.hatDaten() ? 'Dein Stand — nur in diesem Browser gespeichert.' : `Noch leer: Starte mit ${L.folgeKontext(K.folgen[0])}.`;
   }
   zeigen();
-  const k = $('#mail-kopieren');
-  k && k.addEventListener('click', () => {
-    const m = $('#mail').textContent.trim();
-    (navigator.clipboard ? navigator.clipboard.writeText(m) : Promise.reject()).then(() => { k.textContent = 'Kopiert ✓'; },
-      () => { const r = document.createRange(); r.selectNodeContents($('#mail')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); k.textContent = 'Markiert — jetzt kopieren'; });
-    setTimeout(() => { k.textContent = 'Adresse kopieren'; }, 2500);
-  });
 })();
