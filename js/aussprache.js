@@ -44,9 +44,16 @@
     return vorbilder.get(src);
   }
   L.beiStille(() => stoppeWiedergabe());               // Tab im Hintergrund / Seite verlassen: sofort still
+  // Eine-Tonquelle-Regel (lernstand.js): eigene Wiedergabe, Aufnahme und Spracherkennung als Quellen anmelden
+  L.tonquelle('uebung', () => stoppeWiedergabe());
+  L.tonquelle('aufnahme', () => stoppeAufnahme(true));
+  L.tonquelle('erkennung', () => { if (srAktiv) srAktiv.abbrechen(); });
+  // iOS-Audio-Sitzung (Safari ≥ 16.4): Wiedergabe soll auch bei Stummschalter hörbar sein, Aufnahme braucht play-and-record
+  const sitzung = typ => { try { if (navigator.audioSession) navigator.audioSession.type = typ; } catch (e) {} };
   function stoppeWiedergabe() { if (quelle) { try { quelle.stop(); } catch (e) {} quelle = null; } box.querySelectorAll('.spielt').forEach(b => b.classList.remove('spielt')); }
-  function spielen(buf, knopf) {
+  function spielen(buf, knopf) {                       // nur noch für die EIGENE Aufnahme (das Vorbild läuft über <audio>)
     if (!L.tonErlaubt()) return;                       // Ton-Wache (lernstand.js): nur direkt nach Klick/Tipp
+    L.exklusiv('uebung'); sitzung('playback');
     stoppeWiedergabe(); const c = kontext();
     quelle = c.createBufferSource(); quelle.buffer = buf; quelle.connect(c.destination);
     knopf && knopf.classList.add('spielt');
@@ -141,6 +148,8 @@
       return meldung('Dieser Browser erlaubt hier keine Aufnahme. Sprich einfach laut mit dem Vorbild mit — das wirkt auch.');
     }
     const c = kontext();
+    await L.exklusiv('aufnahme');                       // Eine-Tonquelle-Regel: Video pausiert und Audio still, BEVOR das Mikrofon läuft
+    sitzung('play-and-record');
     let stream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
     catch (e) { return meldung(mikrofonFehler(e)); }
@@ -190,6 +199,7 @@
       stopp(verwerfen) {
         this.verwerfen = !!verwerfen; clearInterval(uhr);
         stream.getTracks().forEach(t => t.stop());       // Mikrofon sofort freigeben
+        sitzung('auto');
         knopf.textContent = '● Aufnehmen'; knopf.classList.remove('aufnahme-laeuft'); knopf.setAttribute('aria-pressed', 'false'); pegel.hidden = true;
         if (port) { port.postMessage('stopp'); setTimeout(fertig, 400); } else fertig();
       }
@@ -286,6 +296,7 @@
     srAktiv = versuch;
     knopf.textContent = '■ Hört zu … (antippen zum Abbrechen)'; knopf.classList.add('aufnahme-laeuft');
     erg.innerHTML = '<p class="muted">Sprich jetzt: <b lang="en">' + esc(z.text) + '</b></p>';
+    L.exklusiv('erkennung');                           // Eine-Tonquelle-Regel: Video und Audio still, solange erkannt wird
     try { rec.start(); } catch (e) { abschliessen(hinweis(NOCHMAL)); }
   }
 
@@ -295,13 +306,16 @@
   $('#as-zurueck').addEventListener('click', () => { i = (i + ids.length - 1) % ids.length; zeigen(); });
   $('#as-weiter').addEventListener('click', () => { i = (i + 1) % ids.length; zeigen(); });
   box.querySelectorAll('[data-modus]').forEach(b => b.addEventListener('click', () => { modus = b.dataset.modus; zeigen(); }));
-  $('#as-vorbild-hoeren').addEventListener('click', async e => {
-    const k = e.currentTarget;
-    if (!kontext()) return L.abspielen(ziel().src, k);
-    try { vorbild = await vorbildLaden(ziel().src); spielen(vorbild, k); } catch (err) { L.abspielen(ziel().src, k); }
-  });
+  // Vorbild (iPhone-Test 2026-11-24: ohne vorherige Aufnahme kein Ton): Wiedergabe über <audio> wie die Wort-Knöpfe —
+  // braucht weder Mikrofon noch Audio-Sitzung „Aufnahme“. Web Audio dekodiert das Vorbild nur für die Wellenform.
+  function vorbildHoeren(k) {
+    const src = ziel().src;
+    L.abspielen(src, k);
+    if (AC) vorbildLaden(src).then(b => { if (ziel().src === src) vorbild = b; }).catch(() => {});
+  }
+  $('#as-vorbild-hoeren').addEventListener('click', e => vorbildHoeren(e.currentTarget));
   $('#as-aufnehmen').addEventListener('click', aufnehmen);
-  $('#as-vorbild').addEventListener('click', e => { kontext(); vorbild && spielen(vorbild, e.currentTarget); });
+  $('#as-vorbild').addEventListener('click', e => vorbildHoeren(e.currentTarget));
   $('#as-du').addEventListener('click', e => { kontext(); aufnahme && spielen(aufnahme, e.currentTarget); });
   $('#as-gut').addEventListener('click', () => urteil('gut'));
   $('#as-ueben').addEventListener('click', () => urteil('ueben'));

@@ -17,7 +17,8 @@
       player = new YT.Player('yt', {
         host: 'https://www.youtube-nocookie.com', videoId: F.youtube,
         playerVars: { rel: 0, playsinline: 1, modestbranding: 1, start: Math.floor(start || 0) },
-        events: { onReady: e => e.target.playVideo(), onStateChange: e => { if (e.data === 1) laufen(); else stopp(); } }
+        events: { onReady: e => e.target.playVideo(),
+          onStateChange: e => { if (e.data === 1) { L.exklusiv('video'); laufen(); } else stopp(); } }   // Video startet → Übungs-Audio stoppt
       });
     };
     const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.append(s);
@@ -26,6 +27,14 @@
   const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   if (fortsetzen) box.querySelector('.laden .knopf').textContent = `Weiter ab ${mmss(gemerkt)}`;
   box.querySelector('.laden').addEventListener('click', () => laden(fortsetzen ? gemerkt : 0));
+  // Eine-Tonquelle-Regel: Das Video pausiert, sobald eine andere Quelle startet (Aufnahme, Vorbild, Wort). Das Promise löst
+  // sich erst, wenn der Player wirklich steht (höchstens 800 ms), damit kein Video-Ton in eine Aufnahme läuft.
+  L.tonquelle('video', () => new Promise(fertig => {
+    const st = () => (player && player.getPlayerState ? player.getPlayerState() : -1);
+    if (!player || !player.pauseVideo || (st() !== 1 && st() !== 3)) return fertig();
+    player.pauseVideo(); const t0 = Date.now();
+    const uhr = setInterval(() => { if ((st() !== 1 && st() !== 3) || Date.now() - t0 > 800) { clearInterval(uhr); fertig(); } }, 40);
+  }));
   document.querySelectorAll('[data-zeit]').forEach(b => b.addEventListener('click', () => { laden(+b.dataset.zeit); box.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
   let gemerktUm = 0;
   function laufen() { stopp(); uhr = setInterval(pruefeZeit, 250); L.aktivitaet(F.id, 'player'); }

@@ -201,10 +201,21 @@
   const verstummen = () => stille.forEach(f => { try { f(); } catch (e) {} });
   document.addEventListener('visibilitychange', () => { if (document.hidden) verstummen(); });
   addEventListener('pagehide', verstummen);
+  // Eine-Tonquelle-Regel (iPhone-Test Andreas Reinert 2026-11-24: das laufende Video spielte in eine Aufnahme hinein):
+  // Auf einer Seite spielt bzw. nimmt immer nur EINE Quelle. Jede Quelle meldet sich mit einer Stopp-Funktion an
+  // (Video, Wort-Audio, Übungs-Wiedergabe, Aufnahme, Spracherkennung). Wer startet, ruft L.exklusiv(name): alle anderen
+  // stoppen bzw. pausieren. Nichts setzt sich danach von selbst fort. Das Promise löst sich, wenn alle still sind (das
+  // Video pausiert asynchron) — die Aufnahme fragt das Mikrofon erst danach an.
+  const quellen = new Map();
+  L.tonquelle = (name, stopp) => { quellen.set(name, stopp); };
+  L.exklusiv = name => Promise.all([...quellen].filter(([n]) => n !== name)
+    .map(([, stopp]) => { try { return Promise.resolve(stopp()).catch(() => {}); } catch (e) { return Promise.resolve(); } }));
   let laufend = null;
-  L.beiStille(() => { if (laufend) { laufend.a.pause(); laufend.k && laufend.k.classList.remove('spielt'); laufend = null; } });
+  const wortStopp = () => { if (laufend) { laufend.a.pause(); laufend.k && laufend.k.classList.remove('spielt'); laufend = null; } };
+  L.beiStille(wortStopp); L.tonquelle('wort', wortStopp);
   L.abspielen = function (src, knopf) {
     if (!L.tonErlaubt()) return Promise.resolve(false);  // ohne Klick davor: still (Ton-Wache)
+    L.exklusiv('wort');                                  // Eine-Tonquelle-Regel: Video pausiert, Übung/Aufnahme stoppt
     if (laufend) { laufend.a.pause(); laufend.k && laufend.k.classList.remove('spielt'); }
     const a = new Audio(src); laufend = { a, k: knopf };
     knopf && knopf.classList.add('spielt');
