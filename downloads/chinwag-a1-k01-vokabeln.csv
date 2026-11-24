@@ -3,7 +3,7 @@ hello;hallo;Hello, Edinburgh!;A1-K01-S01;aktiv
 good morning;guten Morgen;Good morning, Mr MacLeod!;A1-K01-S01;aktiv
 good afternoon;guten Tag (nachmittags);Good afternoon, Sofía!;A1-K01-S01;aktiv
 goodbye;auf Wiedersehen;Goodbye, Mr MacLeod!;A1-K01-S01;aktiv
-I'm;ich bin;I'm Sofía.;A1-K01-S01;aktiv
+I am;ich bin;I am Sofía.;A1-K01-S01;aktiv
 my name is;mein Name ist …;My name is Sofía Marín.;A1-K01-S01;aktiv
 What's your name?;Wie heißt du? / Wie heißen Sie?;Hello! What's your name?;A1-K01-S01;aktiv
 Nice to meet you.;Freut mich.;Hello, I'm Sofía. Nice to meet you.;A1-K01-S01;aktiv
@@ -38,5 +38,29 @@ eight;acht;;A1-K01-S01;passiv
 nine;neun;;A1-K01-S01;passiv
 ten;zehn;;A1-K01-S01;passiv
 Where are you from?;Woher kommst du? / Woher kommen Sie?;;A1-K01-S01;passiv
-I am;ich bin (Langform);;A1-K01-S01;passiv
+I'm;ich bin (Kurzform, im Gespräch);;A1-K01-S01;passiv
 oh;null (beim Vorlesen von Telefonnummern);;A1-K01-S01;passiv
+the;der / die / das (bestimmter Artikel;;A1-K01-S01;passiv
+on;auf („On the I.“ = auf dem I);;A1-K01-S01;passiv
+Where are you from?;Woher kommst du? / Woher kommen Sie?;;A1-K01-S02;aktiv
+I am from …;ich komme aus …;;A1-K01-S02;aktiv
+Spain;Spanien;;A1-K01-S02;aktiv
+Spanish;spanisch / Spanier, Spanierin;;A1-K01-S02;aktiv
+Scotland;Schottland;;A1-K01-S02;aktiv
+Scottish;schottisch / Schotte, Schottin;;A1-K01-S02;aktiv
+Germany;Deutschland;;A1-K01-S02;aktiv
+German;deutsch / Deutsche, Deutscher;;A1-K01-S02;aktiv
+Are you …?;Bist du …? / Sind Sie …?;;A1-K01-S02;aktiv
+Yes, I am.;Ja, bin ich.;;A1-K01-S02;aktiv
+No, I'm not.;Nein, bin ich nicht.;;A1-K01-S02;aktiv
+And you?;Und du? / Und Sie?;;A1-K01-S02;aktiv
+the sun;die Sonne;;A1-K01-S02;passiv
+a;ein / eine (unbestimmter Artikel;;A1-K01-S02;passiv
+student;Student, Studentin;;A1-K01-S02;passiv
+islands;Inseln („the islands“ = die Inseln, z. B. Lewis);;A1-K01-S02;passiv
+Lovely!;Schön! / Herrlich! (britisch, sehr häufig);;A1-K01-S02;passiv
+milk;Milch;;A1-K01-S02;passiv
+Austria;Österreich;;A1-K01-S02;passiv
+Switzerland;die Schweiz;;A1-K01-S02;passiv
+I'm from …;ich komme aus … (Kurzform);;A1-K01-S02;passiv
+I am not;ich bin nicht (Vollform);;A1-K01-S02;passiv

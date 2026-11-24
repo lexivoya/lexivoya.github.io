@@ -1,4 +1,6 @@
-/* Lexivoya · Lektionsseite: Video (erst nach Klick, youtube-nocookie), Quiz an den Zeitmarken, Vokabeln, Schreibtest. */
+/* Lexivoya · Lektionsseite: Video (erst nach Klick, youtube-nocookie), Quiz an den Zeitmarken, Vokabeln, Schreibtest.
+   Menü-Konzept v2: Jede Bearbeitung merkt Kurs, Folge und Abschnitt (L.aktivitaet) für „Weiterlernen“; das Video setzt an
+   der zuletzt gesehenen Stelle fort. */
 (function () {
   'use strict';
   const L = window.Lernstand, D = L.daten, $ = s => document.querySelector(s);
@@ -20,12 +22,17 @@
     };
     const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.append(s);
   }
-  box.querySelector('.laden').addEventListener('click', () => laden(0));
+  const gemerkt = L.videoZeit(F.id), fortsetzen = gemerkt > 15 && gemerkt < (F.dauer || 1e9) * .95;
+  const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  if (fortsetzen) box.querySelector('.laden .knopf').textContent = `Weiter ab ${mmss(gemerkt)}`;
+  box.querySelector('.laden').addEventListener('click', () => laden(fortsetzen ? gemerkt : 0));
   document.querySelectorAll('[data-zeit]').forEach(b => b.addEventListener('click', () => { laden(+b.dataset.zeit); box.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
-  function laufen() { stopp(); uhr = setInterval(pruefeZeit, 250); }
+  let gemerktUm = 0;
+  function laufen() { stopp(); uhr = setInterval(pruefeZeit, 250); L.aktivitaet(F.id, 'player'); }
   function stopp() { clearInterval(uhr); uhr = null; }
   function pruefeZeit() {
     const t = player.getCurrentTime(), dur = player.getDuration() || F.dauer;
+    if (Math.abs(t - gemerktUm) >= 5) { gemerktUm = t; L.videoMerken(F.id, t >= dur * .97 ? 0 : t); }
     if (t > maxZeit && t - maxZeit < 2) maxZeit = t;      // nur zusammenhängend Gesehenes zählt (kein Vorspulen ans Ende)
     for (const q of F.quiz) {
       if (t < q.t - 5) gefragt.delete(q.id);             // zurückgespult: Frage darf wieder kommen
@@ -44,7 +51,7 @@
     qbox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     qbox.querySelectorAll('.optionen button').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.i, ok = i === q.richtig;
-      L.quizAntwort(F.id, q.id, ok);
+      L.quizAntwort(F.id, q.id, ok); L.aktivitaet(F.id, 'quiz-abschnitt');
       qbox.querySelectorAll('.optionen button').forEach((x, j) => { x.disabled = true; if (j === q.richtig) x.classList.add('richtig'); else if (j === i) x.classList.add('falsch'); });
       qbox.querySelector('.rueckmeldung').innerHTML = (ok ? '<span class="gut">Richtig!</span> ' : '<span class="schlecht">Nicht ganz.</span> Diese Frage kommt später noch einmal. ') +
         esc(q.erklaerung) + `<div class="zeile-knoepfe"><button class="btn btn-primary btn-klein" type="button">${knopf || 'Weiter'}</button></div>`;
@@ -68,7 +75,7 @@
   }
 
   // ---------------------------------------------------------------- Folge gesehen / Stempel
-  $('#gesehen').addEventListener('click', () => { const f = L.folge(F.id); if (!f.gesehen) { f.gesehen = true; L.folgeSetzen(F.id, f); L.einheit(); } stempelZeigen(); });
+  $('#gesehen').addEventListener('click', () => { L.aktivitaet(F.id, 'quiz-abschnitt'); const f = L.folge(F.id); if (!f.gesehen) { f.gesehen = true; L.folgeSetzen(F.id, f); L.einheit(); } stempelZeigen(); });
   function stempelZeigen() {
     const f = L.folge(F.id), el = $('#stempel-stand');
     if (f.stempel) el.innerHTML = `<span class="stempel">Folge ${F.nr}<small>geschafft</small></span>`;
@@ -78,7 +85,7 @@
 
   // ---------------------------------------------------------------- Vokabeln anhören, Schreibtest
   document.querySelectorAll('.hoeren[data-src]').forEach(b => b.addEventListener('click', () => L.abspielen(b.dataset.src, b)));
-  $('#schreibtest-start').addEventListener('click', () => L.schreibtest($('#schreibtest'), F.woerter));
+  $('#schreibtest-start').addEventListener('click', () => { L.aktivitaet(F.id, 'ueben'); L.schreibtest($('#schreibtest'), F.woerter); });
 
   quizStand(); stempelZeigen();
   if (!L.speicherOk) $('#speicher-hinweis').hidden = false;

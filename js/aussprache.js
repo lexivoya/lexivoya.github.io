@@ -10,6 +10,7 @@
   const L = window.Lernstand, D = L.daten, $ = s => document.querySelector(s);
   const box = $('#aussprache-box'); if (!box) return;
   const F = D.folgen.find(f => f.id === document.body.dataset.folge), ids = F.woerter;
+  const merken = () => L.aktivitaet && L.aktivitaet(F.id, 'aussprache');   // „Weiterlernen“ führt hierher zurück
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const MAX_S = { wort: 6, satz: 10 };
   let i = 0, modus = 'wort', ctx = null, vorbild = null, aufnahme = null, quelle = null, laeuft = null, bewertet = new Set(), einheitGezaehlt = false;
@@ -17,7 +18,8 @@
     if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
     return /Android/.test(ua) ? 'android' : /Macintosh/.test(ua) ? 'mac' : 'andere'; })();
   const EINSTELLUNG = {
-    ios: { mikrofon: 'unter Einstellungen → Safari → Mikrofon (oder über „aA“ in der Adressleiste → Website-Einstellungen)', erkennung: '' },   // Erkennung auf iOS ausgeblendet
+    ios: { mikrofon: L.app ? 'in den iPhone-Einstellungen bei Safari → Mikrofon. In der App vom Home-Bildschirm fragt iOS manchmal erneut, wenn du die App neu öffnest. Klappt es hier gar nicht, nimm die Übung in Safari auf lexivoya.com'
+                            : 'unter Einstellungen → Safari → Mikrofon (oder über „aA“ in der Adressleiste → Website-Einstellungen)', erkennung: '' },   // Erkennung auf iOS ausgeblendet
     android: { mikrofon: 'beim Schloss-Symbol neben der Adresse → Berechtigungen',
       erkennung: 'in den Android-Einstellungen die Spracheingabe (Sprachdienste von Google) aktivieren' },
     mac: { mikrofon: 'beim Schloss-Symbol neben der Adresse bzw. in Safari unter Einstellungen → Websites → Mikrofon',
@@ -41,8 +43,10 @@
     if (!vorbilder.has(src)) vorbilder.set(src, fetch(src).then(r => r.arrayBuffer()).then(b => dekodieren(kontext(), b)));
     return vorbilder.get(src);
   }
+  L.beiStille(() => stoppeWiedergabe());               // Tab im Hintergrund / Seite verlassen: sofort still
   function stoppeWiedergabe() { if (quelle) { try { quelle.stop(); } catch (e) {} quelle = null; } box.querySelectorAll('.spielt').forEach(b => b.classList.remove('spielt')); }
   function spielen(buf, knopf) {
+    if (!L.tonErlaubt()) return;                       // Ton-Wache (lernstand.js): nur direkt nach Klick/Tipp
     stoppeWiedergabe(); const c = kontext();
     quelle = c.createBufferSource(); quelle.buffer = buf; quelle.connect(c.destination);
     knopf && knopf.classList.add('spielt');
@@ -140,6 +144,7 @@
     let stream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
     catch (e) { return meldung(mikrofonFehler(e)); }
+    merken();
     const daten = [], start = c.currentTime, max = MAX_S[modus === 'wort' ? 'wort' : 'satz'];
     const src = c.createMediaStreamSource(stream); let knoten, port = null;
     try {
