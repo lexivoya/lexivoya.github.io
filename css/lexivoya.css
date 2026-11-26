@@ -245,7 +245,8 @@ footer{padding-bottom:max(2.2rem, calc(1rem + env(safe-area-inset-bottom, 0px)))
 #player{scroll-margin-top:6rem;}
 
 /* Fuß: Impressum · Datenschutz · Kontakt + Social-Icons (2026-11-24) */
-.foot .foot-links a + a::before{content:"·"; margin-right:.55rem; margin-left:-.55rem; color:var(--ink-soft); text-decoration:none; display:inline-block;}
+/* Ohne Trennpunkt (Andreas Reinert 2026-11-26: „·“ stand mobil am Zeilenanfang): Abstand trennt, auch nach jedem Umbruch */
+.foot .foot-links{flex-wrap:wrap; column-gap:1.1rem; row-gap:.5rem; align-items:baseline;}
 .sozial{display:flex; gap:.9rem; align-items:center; width:100%; justify-content:flex-end;}
 .sozial a{color:var(--ink-soft); display:inline-grid; place-items:center; width:2.4rem; height:2.4rem; border-radius:999px; border:1.5px solid color-mix(in srgb, var(--line) 25%, transparent);}
 .sozial a:hover{color:var(--ink); border-color:var(--line);}
@@ -260,3 +261,42 @@ footer{padding-bottom:max(2.2rem, calc(1rem + env(safe-area-inset-bottom, 0px)))
 .btn-abo svg{color:#b4543a; flex:none;}
 .btn-abo:hover{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, var(--card));}
 .abo .hinweis{margin:0;}
+
+/* Hilfe & Fragen (Andreas Reinert 2026-11-26): aufklappbare Fragen (<details>, ohne Skript nutzbar), Anleitung mit Video */
+.hilfe{max-width:46rem;}
+.hilfe-inhalt{display:flex; flex-wrap:wrap; gap:.45rem; margin:1.3rem 0 .4rem;}
+.hilfe-inhalt a{text-decoration:none; font-size:.92rem; font-weight:600; color:var(--ink-soft); border:1.5px solid color-mix(in srgb, var(--line) 25%, transparent); border-radius:999px; padding:.2rem .75rem; background:var(--card);}
+.hilfe-inhalt a:hover{color:var(--ink); border-color:var(--line);}
+.hilfe h2{scroll-margin-top:6rem;}
+.faq{border:1.5px solid color-mix(in srgb, var(--line) 22%, transparent); border-radius:10px; background:var(--card); margin:0 0 .55rem; scroll-margin-top:6rem;}
+.faq summary{cursor:pointer; list-style:none; font-weight:700; padding:.8rem 2.6rem .8rem 1rem; position:relative; line-height:1.35; min-height:2.75rem;}
+.faq summary::-webkit-details-marker{display:none;}
+.faq summary::after{content:"+"; position:absolute; right:1rem; top:50%; transform:translateY(-50%); font-family:var(--hand); font-size:1.7rem; line-height:1; color:var(--accent);}
+.faq[open] summary::after{content:"–";}
+.faq[open] summary{border-bottom:1.5px dashed color-mix(in srgb, var(--line) 22%, transparent);}
+.faq summary:hover{color:var(--accent);}
+.faq-antwort{padding:.75rem 1rem .9rem;}
+.faq-antwort p,.faq-antwort ol{margin:0 0 .6rem;} .faq-antwort > :last-child{margin-bottom:0;}
+.faq-antwort ol{padding-left:1.3rem; display:grid; gap:.3rem;}
+.anleitung{margin:1.6rem 0 1rem; padding:1.2rem; border:1.5px solid var(--accent); border-radius:12px; background:var(--card); scroll-margin-top:5rem;}
+.anleitung h2{margin-top:0;}
+.anleitung > .hinweis{display:flex; flex-wrap:wrap; gap:.5rem 1rem; align-items:center;}
+.anleitung-raster{display:grid; grid-template-columns:minmax(0,15rem) minmax(0,1fr); gap:1.4rem; margin-top:1rem; align-items:start;}
+.anleitung-video{margin:0;}
+.anleitung-video video{display:block; width:100%; height:auto; aspect-ratio:720/1560; border-radius:14px; border:1.5px solid color-mix(in srgb, var(--line) 35%, transparent); background:#1d1d1f;}
+.anleitung-video figcaption{font-size:.85rem; color:var(--ink-soft); margin-top:.4rem; line-height:1.4;}
+.anleitung-schritte h3{font-size:1.05rem; margin:1rem 0 .35rem;} .anleitung-schritte h3:first-child{margin-top:0;}
+.anleitung-schritte ol{margin:0 0 .5rem; padding-left:1.3rem; display:grid; gap:.25rem;}
+@media (max-width:640px){ .anleitung{padding:1rem .85rem;} .anleitung-raster{grid-template-columns:1fr;} .anleitung-video{max-width:15rem; margin-inline:auto;} }
+.hilfe-ende{margin-top:2rem; font-weight:700; font-size:1.1rem;}
+/* Anleitungsvideo: vor dem Tipp nur Poster + Play-Knopf (das <video> liegt im <template>, kein Abruf) */
+.anleitung-start{display:block; position:relative; width:100%; padding:0; border:1.5px solid color-mix(in srgb, var(--line) 35%, transparent); border-radius:14px; overflow:hidden; background:#1d1d1f; aspect-ratio:720/1560;}
+.anleitung-start img{display:block; width:100%; height:100%; object-fit:cover;}
+.anleitung-play{position:absolute; left:50%; top:50%; width:4.2rem; height:4.2rem; transform:translate(-50%,-50%); border-radius:999px; background:var(--accent); box-shadow:0 4px 18px rgba(0,0,0,.35);}
+.anleitung-play::after{content:""; position:absolute; left:54%; top:50%; transform:translate(-50%,-50%); border-style:solid; border-width:.8rem 0 .8rem 1.3rem; border-color:transparent transparent transparent #fff;}
+.anleitung-start:hover .anleitung-play{filter:brightness(1.08);}
+/* Als App installieren: im Fuß und auf /hilfe/; in der installierten App nie */
+.foot .app-knopf{background:none; border:1.5px solid color-mix(in srgb, var(--line) 35%, transparent); border-radius:999px; padding:.15rem .6rem; font-size:.85rem; color:var(--ink-soft); text-decoration:none;}
+.foot .app-knopf:hover{color:var(--ink); border-color:var(--line);}
+:root[data-app="standalone"] [data-installieren]{display:none !important;}
+@media (display-mode: standalone){ [data-installieren]{display:none !important;} }

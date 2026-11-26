@@ -283,6 +283,28 @@
   }
   document.addEventListener('lernstand', () => { if (L.hatDaten()) { const b = document.getElementById('app-hinweis'); b && b.remove(); } });
 
+  // ---------------------------------------------------------------- Als App installieren (Andreas Reinert 2026-11-26)
+  // Knopf „Als App installieren“ (Fuß, /hilfe/) ist ein Link auf die Anleitung /hilfe/#app-installieren. Kann der Browser selbst
+  // installieren (beforeinstallprompt: Chrome/Edge/Android), öffnet der Klick stattdessen dessen echten Dialog. Nie beim Laden:
+  // Der Browser-eigene Hinweis wird unterdrückt (preventDefault), gefragt wird nur nach einem echten Klick. In der installierten
+  // App ist der Knopf ausgeblendet (APP, CSS display-mode). data-installieren="direkt" = nur sichtbar, wenn der Dialog möglich ist.
+  let installDialog = null, installiert = false;
+  const installZeigen = () => document.querySelectorAll('[data-installieren]').forEach(a => {
+    a.hidden = APP || installiert || (a.dataset.installieren === 'direkt' && !installDialog);
+  });
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); installDialog = e; installZeigen(); });
+  addEventListener('appinstalled', () => { installDialog = null; installiert = true; installZeigen(); });
+  document.addEventListener('click', e => {
+    const a = e.target && e.target.closest && e.target.closest('a[data-installieren]');
+    if (!a || !installDialog || !e.isTrusted) return;    // ohne Dialog: der Link führt zur Anleitung
+    e.preventDefault();
+    const d = installDialog; installDialog = null;      // ein Dialog-Ereignis gilt nur einmal
+    Promise.resolve(d.prompt()).then(() => d.userChoice).then(w => { if (w && w.outcome === 'accepted') installiert = true; })
+      .catch(() => {}).then(installZeigen);
+  });
+  document.addEventListener('DOMContentLoaded', installZeigen);
+  L.installierbar = () => !!installDialog;              // für Tests (werkzeuge/hilfetest.mjs)
+
   document.addEventListener('DOMContentLoaded', () => {
     weiterZeigen(); appHinweis();
     document.querySelectorAll('.thema').forEach(b => b.addEventListener('click', () => {
