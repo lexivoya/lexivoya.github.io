@@ -4,7 +4,8 @@
   'use strict';
   const L = window.Lernstand, D = L.daten, $ = s => document.querySelector(s);
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const alle = D.folgen.flatMap(f => f.woerter);
+  // nur Wörter erschienener Folgen (Folgen nach Sendetermin, lernstand.js); neu berechnet, wenn ein Termin erreicht ist
+  let alle = D.kurse.flatMap(k => L.kursWoerter(k.serie));
   const kursKopf = k => `<h3 class="kurs-titel">${esc(k.sprache)} · ${esc(k.niveau)} <small>${esc(k.name)}${k.staffel ? ' · ' + esc(k.staffel) : ''}</small></h3>`;
   const datum = s => new Date(s + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -56,7 +57,7 @@
   }
 
   function kompetenzen() {
-    $('#kompetenzen').innerHTML = D.kurse.map(kurs => kursKopf(kurs) + '<ul class="kompetenzen">' + D.kompetenzen.filter(k => k.kurs === kurs.serie).map(k => {
+    $('#kompetenzen').innerHTML = D.kurse.map(kurs => kursKopf(kurs) + '<ul class="kompetenzen">' + D.kompetenzen.filter(k => k.kurs === kurs.serie && L.erschienen(k.folge)).map(k => {
       const fest = k.woerter.filter(id => L.tinte(id) === 'fest').length, alleFest = fest === k.woerter.length;
       const offen = k.woerter.filter(id => L.tinte(id) !== 'fest').map(id => D.woerter[id].en);
       return `<li class="${alleFest ? 'ja' : ''}">${esc(alleFest ? k.kannst : k.ziel)}
@@ -72,7 +73,7 @@
       return `<a href="${f.url}?wort=${encodeURIComponent(id)}#aussprache" lang="en" title="${esc(D.woerter[id].en)} — ${esc(L.folgeLabel(f.id))}">${esc(D.woerter[id].en)}</a>`; }).join(' · ')}</p>
       <p class="hinweis">Diese Wörter hast du zum Sprechen vorgemerkt. Sie bleiben hier, bis du sie mit „Klang gut“ abhakst.</p>` : '';
   }
-  function alles() { heft(); stempel(); ziel(); kompetenzen(); aussprache(); }
+  function alles() { alle = D.kurse.flatMap(k => L.kursWoerter(k.serie)); heft(); stempel(); ziel(); kompetenzen(); aussprache(); }
   $('#ziel .pause').addEventListener('click', () => L.pauseUmschalten());
   $('#export').addEventListener('click', () => {
     Promise.resolve(L.exportieren()).then(art => {

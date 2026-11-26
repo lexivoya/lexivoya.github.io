@@ -22,6 +22,106 @@
   }
   const leer = () => ({ version: 1, woerter: {}, folgen: {}, ziel: { proWoche: null, pausen: [], einheiten: {} }, quizFehler: [], aussprache: {}, kurse: {}, video: {} });
   const KURSE = DATEN.kurse, FOLGE = id => DATEN.folgen.find(f => f.id === id);
+  // ---------------------------------------------------------------- Folgen nach Sendetermin (Andreas Reinert 2026-11-26)
+  // Die Website zeigt nie ein noch nicht veröffentlichtes Video. Sichtbar: alle erschienenen Folgen + höchstens ZWEI
+  // angekündigte (Thumbnail + „Erscheint …“, ohne Link). Der Browser vergleicht die Uhrzeit mit dem Termin (plan[].ab, UTC),
+  // ohne neuen Bau; das Fenster schiebt sich mit jedem Termin selbst weiter (auch während die Seite offen ist).
+  // Gleiche Regel wie sendeplan.fenster() beim Bau. Kein Countdown, nur Umschalten zum Termin.
+  const FENSTER = 2;
+  const KURS_FOLGEN = Object.fromEntries(KURSE.map(k => [k.serie, k.folgen.slice()]));   // gebaute Lektionsseiten
+  const PLAN = id => { for (const k of KURSE) { const e = (k.plan || []).find(x => x.id === id); if (e) return e; } return null; };
+  const da = e => !!e && e.video && !!e.ab && Date.now() >= Date.parse(e.ab);   // ohne Termin nie (kein privates Video)
+  const erschienen = id => da(PLAN(id));
+  function fenster(serie) {
+    const plan = ((KURSE.find(k => k.serie === serie) || {}).plan || []).slice().sort((a, b) => a.nr - b.nr);
+    const raus = plan.filter(da);
+    const kommt = plan.filter(e => !da(e) && e.ab && Date.now() < Date.parse(e.ab)).sort((a, b) => Date.parse(a.ab) - Date.parse(b.ab) || a.nr - b.nr);
+    return { erschienen: raus, angekuendigt: kommt.slice(0, FENSTER) };
+  }
+  function anwenden() { KURSE.forEach(k => { k.folgen = KURS_FOLGEN[k.serie].filter(erschienen); }); }   // Lernmenü: nur Erschienenes
+  anwenden();
+  const escH = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // Termin in der Ortszeit des Besuchers (Nachtrag Andreas Reinert 2026-11-26). Umgeschaltet wird weiter in absoluter Zeit
+  // (plan[].ab mit Zone gegen Date.now()); nur die Anzeige folgt der Browser-Zeitzone, Wochentag und Datum können sich
+  // verschieben (Honolulu: „Freitag, 27. November, 22:00“). Weicht der UTC-Versatz des Besuchers zum Termin-Zeitpunkt von
+  // Europe/Zurich ab, folgt „(09:00 Schweizer Zeit)“; bei gleichem Versatz (CH, DE, AT …) kein Zusatz. Statisches HTML
+  // (ohne JavaScript): Schweizer Zeit mit „(Schweizer Zeit)“ (termin_html in bauen.py).
+  const ZUERICH = { timeZone: 'Europe/Zurich' };
+  const teile = (t, opt, zone) => Object.fromEntries(new Intl.DateTimeFormat('de', Object.assign({ hourCycle: 'h23' }, opt, zone))
+    .formatToParts(t).map(x => [x.type, x.value]));
+  const versatz = (t, zone) => {                          // Minuten zu UTC zum Zeitpunkt t (in der Zone bzw. im Browser)
+    const z = teile(t, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }, zone);
+    return Math.round((Date.UTC(+z.year, +z.month - 1, +z.day, +z.hour % 24, +z.minute) - Math.floor(t / 6e4) * 6e4) / 6e4);
+  };
+  function terminText(ab) {                               // „Samstag, 28. November, 03:00 (09:00 Schweizer Zeit)“
+    const t = Date.parse(ab);
+    try {
+      const o = teile(t, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+      let s = `${o.weekday}, ${o.day}. ${o.month}, ${o.hour}:${o.minute}`;
+      if (versatz(t) !== versatz(t, ZUERICH)) {
+        const ch = teile(t, { hour: '2-digit', minute: '2-digit' }, ZUERICH);
+        s += ` (${ch.hour}:${ch.minute} Schweizer Zeit)`;
+      }
+      return s;
+    } catch (e) { return null; }                         // ohne Intl: statischer Text (Schweizer Zeit) bleibt stehen
+  }
+  const terminHtml = ab => `<time class="termin" datetime="${escH(ab)}">${escH(terminText(ab) || '')}</time>`;
+  function termineLokal() { document.querySelectorAll('time.termin[datetime]').forEach(el => { const s = terminText(el.getAttribute('datetime')); if (s && el.textContent !== s) el.textContent = s; }); }
+  // gleiches HTML wie thumb_html / ankuendigung_html in bauen.py
+  const thumbHtml = (pfad, alt, groesse) => `<picture><source type="image/webp" srcset="${pfad}-640.webp 640w, ${pfad}-1280.webp 1280w" sizes="${groesse}">` +
+    `<img src="${pfad}-1280.jpg" srcset="${pfad}-640.jpg 640w, ${pfad}-1280.jpg 1280w" sizes="${groesse}" alt="${escH(alt)}" width="1280" height="720" loading="lazy" decoding="async"></picture>`;
+  function ankuendigungHtml(k, e) {
+    const titel = `${k.sprache} · ${k.niveau} · Folge ${e.nr}` + (e.titel ? ` — ${e.titel}` : '');
+    return `<li class="ankuendigung" data-ankuendigung="${e.nr}" aria-disabled="true"><span class="ank-bild">${thumbHtml(e.thumb, titel + ' — Thumbnail', '(max-width:520px) 40vw, 200px')}</span>` +
+      `<span class="ank-text"><span class="ank-name">${escH(titel)}</span> <span class="ank-termin">Erscheint ${terminHtml(e.ab)}</span> <span class="bald-stempel" aria-hidden="true">Bald</span></span></li>`;
+  }
+  let neuGebaut = false;
+  function folgenZeigen() {
+    document.querySelectorAll('[data-folge-ab]').forEach(el => {
+      const ja = erschienen(el.dataset.folgeAb); el.hidden = !ja;
+      if (el.dataset.youtube) { if (ja) el.href = 'https://youtu.be/' + el.dataset.youtube; else el.removeAttribute('href'); }
+    });
+    document.querySelectorAll('[data-folge-bis]').forEach(el => { el.hidden = erschienen(el.dataset.folgeBis); });
+    KURSE.forEach(k => {
+      const f = fenster(k.serie), n = f.erschienen.length, erste = f.angekuendigt[0];
+      document.querySelectorAll(`[data-online="${k.serie}"]`).forEach(el => {
+        el.textContent = `${n} ${n === 1 ? 'Folge' : 'Folgen'} online` + (k.folgen_geplant ? ` · ${k.folgen_geplant} geplant` : '');
+      });
+      document.querySelectorAll(`ol[data-folgenliste="${k.serie}"]`).forEach(ol => {
+        const soll = f.erschienen.map(e => 'e' + e.nr).concat(f.angekuendigt.map(e => 'a' + e.nr)).join(' ');
+        const ist = [...ol.children].map(li => {
+          if (li.dataset.ankuendigung) return 'a' + li.dataset.ankuendigung;
+          const s = li.querySelector('[data-folge]'), e = s && PLAN(s.dataset.folge); return 'e' + (e ? e.nr : '?');
+        }).join(' ');
+        if (soll === ist) return;
+        neuGebaut = true;
+        ol.innerHTML = f.erschienen.filter(e => e.url).map(e => `<li><a href="${e.url}">${escH(L.folgeLabel(e.id))}</a> <span class="folge-status" data-folge="${e.id}"></span></li>`)
+          .concat(f.angekuendigt.map(e => ankuendigungHtml(k, e))).join('\n');
+      });
+      document.querySelectorAll(`.vormerk[data-vormerk="${k.serie}"]`).forEach(v => {     // Nächste Folge
+        const box = v.closest('#naechste-folge') || v.closest('p.vormerk-zeile') || v;
+        let zeigen = !!erste;
+        if (box.id === 'naechste-folge') {                  // Lektionsseite: nur auf der neuesten erschienenen Folge
+          const neueste = f.erschienen.length ? f.erschienen[f.erschienen.length - 1].id : null;
+          zeigen = zeigen && box.dataset.folge === neueste;
+          const linie = box.previousElementSibling; if (linie && linie.matches('hr.rule')) linie.hidden = !zeigen;
+        }
+        box.hidden = !zeigen;
+        if (erste) { v.querySelector('.vormerk-name').textContent = `Folge ${erste.nr}`; v.querySelector('.vormerk-termin').innerHTML = '— ' + terminHtml(erste.ab); }
+      });
+    });
+    termineLokal();                                      // jeden Termin in Ortszeit (auch frisch gebaute Karten)
+  }
+  // Umschalten zum nächsten Termin, auch wenn die Seite offen bleibt (ein Zeitgeber, kein Intervall, kein Countdown)
+  function planen() {
+    const kuenftig = KURSE.flatMap(k => k.plan || []).map(e => e.ab && Date.parse(e.ab)).filter(t => t && t > Date.now());
+    if (!kuenftig.length) return;
+    setTimeout(() => { anwenden(); folgenZeigen(); document.dispatchEvent(new CustomEvent('folgen')); document.dispatchEvent(new CustomEvent('lernstand')); planen(); },
+      Math.min(Math.min(...kuenftig) - Date.now() + 50, 2147483000));
+  }
+  const folgenStart = () => { folgenZeigen(); if (neuGebaut) document.dispatchEvent(new CustomEvent('lernstand')); planen(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', folgenStart);
+  else folgenStart();
   // Installierte App vom Home-Bildschirm (iOS: navigator.standalone; sonst display-mode) — eigener Speicher, kein Zurück-Knopf
   const APP = (() => { try { return navigator.standalone === true || matchMedia('(display-mode: standalone)').matches; } catch (e) { return false; } })();
   if (APP) document.documentElement.dataset.app = 'standalone';
@@ -101,6 +201,7 @@
 
     // ---------------------------------------------------------------- Kurse, Kurs-Kontext, Weiterlernen
     app: APP,
+    erschienen, fenster, terminText,                     // Folgen nach Sendetermin, Termin in Ortszeit (siehe oben)
     kurs(serie) { return KURSE.find(k => k.serie === serie); },
     folgeKontext(id) { const f = FOLGE(id), k = L.kurs(f.kurs); return `${k.sprache} · ${k.niveau} · Folge ${f.nr}`; },
     folgeLabel(id) { return `${L.folgeKontext(id)} — ${FOLGE(id).titel}`; },
@@ -119,6 +220,8 @@
     },
     kursZiel(serie) {                                    // {wort, ziel, href, titel} für einen Kurs
       const k = L.kurs(serie), st = L.kursStand(serie), z = S.kurse[serie];
+      // Vor dem ersten Termin: noch keine Lektion → zur Kurs-Karte mit den Ankündigungen (keine Lektion verlinken)
+      if (!k.folgen.length) return { wort: 'Loslegen', ziel: k.sprache, href: `/kurse/#${serie}`, titel: `${k.sprache} · ${k.niveau} · ${k.name}`, keine: true };
       const zu = (wort, id, anker) => ({ wort, ziel: `${k.sprache} · Folge ${FOLGE(id).nr}`, href: FOLGE(id).url + (anker ? '#' + anker : ''), titel: L.folgeLabel(id), folge: id });
       if (!st.aktiv) return zu('Loslegen', k.folgen[0]);
       if (st.offen) return zu('Weiter', st.offen, z && z.folge === st.offen ? z.abschnitt : null);
@@ -126,7 +229,7 @@
       return zu('Weiter', (z && FOLGE(z.folge) && z.folge) || k.folgen[k.folgen.length - 1], z && z.abschnitt);
     },
     weiterlernen() {                                     // zuletzt genutzter, nicht abgeschlossener Kurs; sonst der erste neue
-      const st = KURSE.map(k => ({ k, s: L.kursStand(k.serie) }));
+      const st = KURSE.map(k => ({ k, s: L.kursStand(k.serie) })).sort((a, b) => !a.k.folgen.length - !b.k.folgen.length);   // Kurse mit erschienener Folge zuerst
       const aktiv = st.filter(x => x.s.aktiv && !x.s.fertig).sort((a, b) => b.s.zuletzt.localeCompare(a.s.zuletzt));
       const wahl = (aktiv[0] || st.find(x => !x.s.aktiv) || st.filter(x => x.s.aktiv).sort((a, b) => b.s.zuletzt.localeCompare(a.s.zuletzt))[0] || st[0]).k;
       return Object.assign({ kurs: wahl.serie }, L.kursZiel(wahl.serie));
@@ -155,10 +258,11 @@
       if (hier) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     document.querySelectorAll('a[data-weiter-kurs]').forEach(a => {
-      const z = L.kursZiel(a.dataset.weiterKurs); a.href = z.href; a.title = z.titel; a.textContent = `${z.wort}: ${z.ziel}`;
+      const z = L.kursZiel(a.dataset.weiterKurs); a.href = z.href; a.title = z.titel; a.textContent = `${z.wort}: ${z.ziel}`; a.hidden = !!z.keine;
     });
   }
   document.addEventListener('lernstand', () => { if (document.readyState !== 'loading') weiterZeigen(); });
+  document.addEventListener('folgen', weiterZeigen);
 
   // ---------------------------------------------------------------- Installierte App: eigener Speicher (einmaliger Hinweis)
   const APP_HINWEIS = 'lexivoya.app-hinweis';

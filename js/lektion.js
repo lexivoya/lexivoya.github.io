@@ -10,12 +10,16 @@
 
   // ---------------------------------------------------------------- Video: Klick zum Laden
   const box = $('#player');
+  // Folgen zeitgesteuert (Andreas Reinert 2026-11-26): vor dem Sendetermin zeigt der Player nur das Thumbnail mit
+  // „Erscheint …“; ab dem Termin den Play-Knopf. Erst der Klick lädt den Player; vorher geht kein Request an YouTube.
   function laden(start) {
+    if (!L.erschienen(F.id)) return;
+    L.exklusiv('video');   // Klick: andere Quellen stoppen
     if (player) { start != null && (player.seekTo(start, true), player.playVideo()); return; }
     box.innerHTML = '<div id="yt"></div>';
     window.onYouTubeIframeAPIReady = () => {
       player = new YT.Player('yt', {
-        host: 'https://www.youtube-nocookie.com', videoId: F.youtube,
+        host: 'https://www.youtube-nocookie.com', videoId: box.dataset.youtube,
         playerVars: { rel: 0, playsinline: 1, modestbranding: 1, start: Math.floor(start || 0) },
         events: { onReady: e => e.target.playVideo(),
           onStateChange: e => { if (e.data === 1) { L.exklusiv('video'); laufen(); } else stopp(); } }   // Video startet → Übungs-Audio stoppt
@@ -89,7 +93,7 @@
     const f = L.folge(F.id), el = $('#stempel-stand');
     if (f.stempel) el.innerHTML = `<span class="stempel">Folge ${F.nr}<small>geschafft</small></span>`;
     else el.innerHTML = `<p class="muted">Für den Stempel in deinem Heft: Folge ansehen${f.gesehen ? ' ✓' : ''} und alle ${F.quiz.length} Quizfragen beantworten${F.quiz.every(q => f.quiz[q.id]) ? ' ✓' : ''}.</p>`;
-    $('#gesehen').hidden = f.gesehen;
+    $('#gesehen').hidden = f.gesehen || !L.erschienen(F.id);
   }
 
   // ---------------------------------------------------------------- Vokabeln anhören, Schreibtest
@@ -97,5 +101,6 @@
   $('#schreibtest-start').addEventListener('click', () => { L.aktivitaet(F.id, 'ueben'); L.schreibtest($('#schreibtest'), F.woerter); });
 
   quizStand(); stempelZeigen();
+  document.addEventListener('folgen', stempelZeigen);     // Sendetermin erreicht, während die Seite offen ist
   if (!L.speicherOk) $('#speicher-hinweis').hidden = false;
 })();

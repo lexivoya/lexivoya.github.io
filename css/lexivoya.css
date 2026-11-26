@@ -215,6 +215,22 @@ h3 .h-kontext{font-size:.72em;}
 .folgen-liste a{font-weight:600;}
 .folge-status{font-size:.85rem; color:var(--ink-soft); margin-left:.3rem;}
 .folge-status.fertig{color:var(--ok); font-weight:700;}
+/* Nächste Folge (Vormerk-Eintrag, 2026-11-25): nicht klickbar, ausgegraut, Bald-Stempel im Stempel-Look */
+.vormerk{color:var(--ink-soft);}
+.vormerk-name{font-weight:600; opacity:.75;}
+.vormerk-termin{opacity:.75;}
+/* Folgen zeitgesteuert (2026-11-26): Ankündigungskarte (Thumbnail + Datum, ohne Link) und Player vor dem Termin */
+.folgen-liste .ankuendigung{cursor:default; list-style:none; margin:.55rem 0 .55rem -1.1rem; display:flex; gap:.75rem; align-items:center; color:var(--ink-soft);}
+.ankuendigung .ank-bild{flex:0 0 clamp(7.5rem, 32%, 11rem); border:1.5px solid var(--line); border-radius:6px; overflow:hidden; opacity:.85;}
+.ankuendigung .ank-bild img{display:block; width:100%; height:auto;}
+.ankuendigung .ank-text{display:flex; flex-wrap:wrap; gap:.15rem .4rem; align-items:baseline; font-size:.95rem;}
+.ankuendigung .ank-name{font-weight:600; flex-basis:100%;}
+.player .erscheint{position:absolute; left:0; right:0; bottom:0; margin:0; padding:.7rem 1rem; display:flex; justify-content:center; background:linear-gradient(transparent, color-mix(in srgb, var(--paper) 80%, transparent) 45%);}
+.player .erscheint .knopf-aus{background:var(--card); color:var(--ink); border:1.5px solid var(--line); font-weight:700; padding:.45rem 1rem; border-radius:1.2rem; font-size:1rem; text-align:center; text-wrap:balance;}
+.erscheint-zeile{margin:.7rem 0 0; font-weight:600; color:var(--ink-soft);}
+.bald-stempel{display:inline-block; margin-left:.35rem; padding:.02rem .45rem; font-family:var(--hand); font-weight:700; font-size:1rem; line-height:1.2; text-transform:uppercase; letter-spacing:.06em; color:var(--violet); border:3px double var(--violet); border-radius:6px; transform:rotate(-6deg); opacity:.8; vertical-align:.05em;}
+.vormerk-zeile{margin:1rem 0 0; font-size:.95rem;}
+#naechste-folge .vormerk-zeile{margin:0; font-size:1.05rem;}
 .kurs-karte .ctas{margin-top:1.1rem;}
 
 /* Installierte App (Home-Bildschirm): eigener Speicher → Hinweis; sichere Ränder unten (Home-Indikator) */

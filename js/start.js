@@ -14,7 +14,8 @@
     balken('#b-folgen', st.geschafft, st.geplant, `${st.geschafft} / ${st.geplant} Folgen`);
     balken('#b-heft', imHeft, alle.length, `${imHeft} von ${alle.length} aktiv`);
     balken('#b-heute', faellig, Math.max(faellig, 1), faellig === 1 ? '1 Wort' : `${faellig} Wörter`);
-    $('#dash-note').textContent = L.hatDaten() ? 'Dein Stand — nur in diesem Browser gespeichert.' : `Noch leer: Starte mit ${L.folgeKontext(K.folgen[0])}.`;
+    $('#dash-note').textContent = L.hatDaten() ? 'Dein Stand — nur in diesem Browser gespeichert.' : `Noch leer: Starte mit ${K.folgen[0] ? L.folgeKontext(K.folgen[0]) : `${K.sprache} · ${K.niveau} · Folge 1`}.`;
   }
   zeigen();
+  document.addEventListener('folgen', zeigen);           // Sendetermin erreicht: Fortschritt neu
 })();
