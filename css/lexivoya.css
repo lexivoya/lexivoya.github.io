@@ -300,3 +300,18 @@ footer{padding-bottom:max(2.2rem, calc(1rem + env(safe-area-inset-bottom, 0px)))
 .foot .app-knopf:hover{color:var(--ink); border-color:var(--line);}
 :root[data-app="standalone"] [data-installieren]{display:none !important;}
 @media (display-mode: standalone){ [data-installieren]{display:none !important;} }
+
+/* Nutzung & Unterricht (Andreas Reinert 2026-11-26): drei Blöcke erlaubt / nach Absprache / nicht erlaubt, Zeichen statt Juristendeutsch */
+.nutzung{max-width:44rem;}
+.nutzung .lede + .hinweis{margin-top:.6rem; line-height:1.5;}
+.nutzung-block{margin:1.4rem 0 0; padding:1rem 1.1rem 1.05rem; border:1.5px solid color-mix(in srgb, var(--line) 22%, transparent); border-left:5px solid var(--zeichen); border-radius:10px; background:var(--card); scroll-margin-top:6rem;}
+.nutzung-block h2{margin:0 0 .55rem;}
+.nutzung-block.ja{--zeichen:var(--ok);} .nutzung-block.teil{--zeichen:var(--accent);} .nutzung-block.nein{--zeichen:#c2583e;}
+.nutzung .nutzung-liste{list-style:none; margin:0; padding:0; display:grid; gap:.55rem;}
+.nutzung-liste li{position:relative; padding-left:1.7rem; line-height:1.45;}
+.nutzung-liste li::before{position:absolute; left:0; top:-.12rem; font-family:var(--hand); font-weight:700; font-size:1.35rem; line-height:1; color:var(--zeichen);}
+.ja .nutzung-liste li::before{content:"✓";} .teil .nutzung-liste li::before{content:"→";} .nein .nutzung-liste li::before{content:"✗";}
+.nutzung-copy{margin-top:2rem;}
+@media (max-width:640px){ .nutzung-block{padding:.9rem .85rem .95rem;} }
+/* Fuß: © unter allen Links (eigene Zeile, kein Trennpunkt) */
+.foot .foot-copy{width:100%; margin:0; font-size:.85rem; color:var(--ink-soft);}
